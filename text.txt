@@ -1,345 +1,88 @@
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local Debris = game:GetService("Debris")
+--// 🔫 Advanced Gun + Shared Cheater Join Notification System
 
-local player = Players.LocalPlayer
-local cam = workspace.CurrentCamera
+local Players = game:GetService("Players") local ReplicatedStorage = game:GetService("ReplicatedStorage") local RunService = game:GetService("RunService") local TweenService = game:GetService("TweenService") local Debris = game:GetService("Debris")
 
--- RemoteEvent مشترک برای تیراندازی و ارسال اطلاعات به سرور
-local gunFireEvent = ReplicatedStorage:FindFirstChild("GunFireEvent")
-if not gunFireEvent then
-    gunFireEvent = Instance.new("RemoteEvent")
-    gunFireEvent.Name = "GunFireEvent"
-    gunFireEvent.Parent = ReplicatedStorage
+local player = Players.LocalPlayer local cam = workspace.CurrentCamera
+
+--// Remote Events Setup if not ReplicatedStorage:FindFirstChild("FakeGunFire") then Instance.new("RemoteEvent", ReplicatedStorage).Name = "FakeGunFire" end if not ReplicatedStorage:FindFirstChild("CheatJoinEvent") then Instance.new("RemoteEvent", ReplicatedStorage).Name = "CheatJoinEvent" end local fireEvent = ReplicatedStorage:WaitForChild("FakeGunFire") local cheatJoinEvent = ReplicatedStorage:WaitForChild("CheatJoinEvent")
+
+--// Gun Model local function createGunModel() local model = Instance.new("Model") model.Name = "GunModel"
+
+local body = Instance.new("Part")
+body.Name = "Body"
+body.Size = Vector3.new(1.6, 0.5, 3.8)
+body.Color = Color3.fromRGB(15, 15, 15)
+body.Material = Enum.Material.Metal
+body.Anchored = false
+body.CanCollide = false
+body.Parent = model
+
+local grip = Instance.new("Part")
+grip.Size = Vector3.new(0.6, 0.85, 1.1)
+grip.Color = Color3.fromRGB(95, 52, 16)
+grip.Material = Enum.Material.Wood
+grip.Anchored = false
+grip.CanCollide = false
+grip.Parent = model
+
+local barrel = Instance.new("Part")
+barrel.Size = Vector3.new(0.35, 0.35, 2.2)
+barrel.Color = Color3.fromRGB(10, 10, 10)
+barrel.Material = Enum.Material.Metal
+barrel.Anchored = false
+barrel.CanCollide = false
+barrel.Parent = model
+
+local function weld(p0, p1)
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = p0
+	w.Part1 = p1
+	w.Parent = p0
+end
+weld(body, grip)
+weld(body, barrel)
+grip.CFrame = body.CFrame * CFrame.new(0, -0.52, 0.8)
+barrel.CFrame = body.CFrame * CFrame.new(0, 0, -2.5)
+model.PrimaryPart = body
+return model
+
 end
 
--- ساخت مدل گان AK-47 شبیه‌سازی شده
-local function createGunModel()
-    local model = Instance.new("Model")
-    model.Name = "GunModel"
+--// Gun Tool local function createGunTool() local tool = Instance.new("Tool") tool.Name = "AK-47" tool.RequiresHandle = false tool.CanBeDropped = false
 
-    local body = Instance.new("Part")
-    body.Name = "Body"
-    body.Size = Vector3.new(1.6, 0.5, 3.8)
-    body.Color = Color3.fromRGB(18, 18, 18)
-    body.Material = Enum.Material.Metal
-    body.Anchored = false
-    body.CanCollide = false
-    body.CastShadow = true
-    body.Parent = model
+local model = createGunModel()
+model.Parent = tool
+return tool
 
-    local grip = Instance.new("Part")
-    grip.Name = "Grip"
-    grip.Size = Vector3.new(0.5, 0.9, 1)
-    grip.Color = Color3.fromRGB(100, 60, 30)
-    grip.Material = Enum.Material.WoodPlanks
-    grip.Anchored = false
-    grip.CanCollide = false
-    grip.Parent = model
-
-    local barrel = Instance.new("Part")
-    barrel.Name = "Barrel"
-    barrel.Size = Vector3.new(0.3, 0.3, 2.7)
-    barrel.Color = Color3.fromRGB(12, 12, 12)
-    barrel.Material = Enum.Material.Metal
-    barrel.Anchored = false
-    barrel.CanCollide = false
-    barrel.Parent = model
-
-    local trigger = Instance.new("Part")
-    trigger.Name = "Trigger"
-    trigger.Size = Vector3.new(0.2, 0.35, 0.2)
-    trigger.Color = Color3.fromRGB(80, 80, 80)
-    trigger.Material = Enum.Material.Metal
-    trigger.Anchored = false
-    trigger.CanCollide = false
-    trigger.Parent = model
-
-    local magazine = Instance.new("Part")
-    magazine.Name = "Magazine"
-    magazine.Size = Vector3.new(0.5, 1.4, 0.8)
-    magazine.Color = Color3.fromRGB(35, 35, 35)
-    magazine.Material = Enum.Material.Metal
-    magazine.Anchored = false
-    magazine.CanCollide = false
-    magazine.Parent = model
-
-    local sight = Instance.new("Part")
-    sight.Name = "Sight"
-    sight.Size = Vector3.new(0.2, 0.4, 0.3)
-    sight.Color = Color3.fromRGB(20, 20, 20)
-    sight.Material = Enum.Material.Metal
-    sight.Anchored = false
-    sight.CanCollide = false
-    sight.Parent = model
-
-    local stock = Instance.new("Part")
-    stock.Name = "Stock"
-    stock.Size = Vector3.new(0.8, 0.5, 1.2)
-    stock.Color = Color3.fromRGB(18, 18, 18)
-    stock.Material = Enum.Material.Metal
-    stock.Anchored = false
-    stock.CanCollide = false
-    stock.Parent = model
-
-    local function weldParts(part0, part1)
-        local weld = Instance.new("WeldConstraint")
-        weld.Part0 = part0
-        weld.Part1 = part1
-        weld.Parent = part0
-    end
-
-    grip.CFrame = body.CFrame * CFrame.new(0, -0.55, 0.9)
-    barrel.CFrame = body.CFrame * CFrame.new(0, 0, -2.75)
-    trigger.CFrame = body.CFrame * CFrame.new(0.35, -0.38, 0.35)
-    magazine.CFrame = body.CFrame * CFrame.new(0.3, -0.8, -0.3) * CFrame.Angles(math.rad(-20),0,0)
-    sight.CFrame = body.CFrame * CFrame.new(0, 0.28, -1.7)
-    stock.CFrame = body.CFrame * CFrame.new(-1.1, 0, 1)
-
-    weldParts(body, grip)
-    weldParts(body, barrel)
-    weldParts(body, trigger)
-    weldParts(body, magazine)
-    weldParts(body, sight)
-    weldParts(body, stock)
-
-    model.PrimaryPart = body
-    return model
 end
 
--- ساخت ابزار (Tool) گان و دادن به بازیکن
-local function createGunTool()
-    local tool = Instance.new("Tool")
-    tool.Name = "AK-47"
-    tool.RequiresHandle = true
-    tool.CanBeDropped = false
+--// UI local function createUI() local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui")) gui.Name = "GunUI"
 
-    local gunModel = createGunModel()
-    gunModel.Parent = tool
+local btn = Instance.new("ImageButton")
+btn.Size = UDim2.new(0, 110, 0, 110)
+btn.Position = UDim2.new(1, -130, 1, -160)
+btn.Image = "rbxassetid://1482081277"
+btn.ImageColor3 = Color3.fromRGB(255, 200, 50)
+btn.BackgroundColor3 = Color3.fromRGB(10,10,10)
+btn.BackgroundTransparency = 0.2
+btn.Parent = gui
+return gui, btn
 
-    local handle = Instance.new("Part")
-    handle.Name = "Handle"
-    handle.Size = Vector3.new(1,1,1)
-    handle.Transparency = 1
-    handle.CanCollide = false
-    handle.Anchored = false
-    handle.Parent = tool
-
-    local weld = Instance.new("WeldConstraint")
-    weld.Part0 = handle
-    weld.Part1 = gunModel.PrimaryPart
-    weld.Parent = handle
-
-    return tool
 end
 
--- ساخت UI دکمه شلیک زیبا
-local function createUI()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "GunUI"
-    screenGui.Parent = player:WaitForChild("PlayerGui")
+--// Logic local gunTool, gunModel, shootBtn local isEquipped, shooting = false, false
 
-    local shootButton = Instance.new("ImageButton")
-    shootButton.Name = "ShootButton"
-    shootButton.Size = UDim2.new(0, 110, 0, 110)
-    shootButton.Position = UDim2.new(1, -140, 1, -160)
-    shootButton.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    shootButton.BackgroundTransparency = 0.35
-    shootButton.Image = "rbxassetid://1482081277" -- تصویر گلوله
-    shootButton.ImageColor3 = Color3.fromRGB(255, 210, 80)
-    shootButton.AutoButtonColor = false
-    shootButton.Parent = screenGui
+local function playShootSound() if gunModel and gunModel.PrimaryPart then local s = Instance.new("Sound", gunModel.PrimaryPart) s.SoundId = "rbxassetid://2767090" s.Volume = 1 s:Play() Debris:AddItem(s, 2) end end
 
-    local glow = Instance.new("ImageLabel")
-    glow.Size = UDim2.new(1.5, 0, 1.5, 0)
-    glow.Position = UDim2.new(-0.25, 0, -0.25, 0)
-    glow.BackgroundTransparency = 1
-    glow.Image = "rbxassetid://241594314" -- افکت نور
-    glow.ImageColor3 = Color3.fromRGB(255, 190, 40)
-    glow.ImageTransparency = 0.7
-    glow.Parent = shootButton
+local function shoot() if not isEquipped or not gunModel then return end playShootSound() local origin = cam.CFrame.Position local direction = cam.CFrame.LookVector * 1000 local ray = workspace:Raycast(origin, direction, RaycastParams.new()) if ray and ray.Instance then local hitPlr = Players:GetPlayerFromCharacter(ray.Instance:FindFirstAncestorOfClass("Model")) if hitPlr and hitPlr ~= player then fireEvent:FireServer(hitPlr) end end end
 
-    spawn(function()
-        while true do
-            for i = 0.7, 0.3, -0.05 do
-                glow.ImageTransparency = i
-                wait(0.05)
-            end
-            for i = 0.3, 0.7, 0.05 do
-                glow.ImageTransparency = i
-                wait(0.05)
-            end
-        end
-    end)
+--// Gun Equip local function equipGun() isEquipped = true player.CameraMode = Enum.CameraMode.LockFirstPerson gunModel = gunTool:FindFirstChild("GunModel") gunModel.Parent = cam end local function unequipGun() isEquipped = false player.CameraMode = Enum.CameraMode.Classic if gunModel then gunModel:Destroy() gunModel = nil end end
 
-    return screenGui, shootButton
-end
+--// Realtime Gun Pos RunService.RenderStepped:Connect(function() if gunModel and isEquipped then gunModel:SetPrimaryPartCFrame(cam.CFrame * CFrame.new(0.5, -0.7, -1.5)) end end)
 
-local gunTool = nil
-local gunModel = nil
-local shootButton = nil
-local isEquipped = false
-local shooting = false
+--// Give Gun gunTool = createGunTool() gunTool.Parent = player.Backpack gunTool.Equipped:Connect(equipGun) gunTool.Unequipped:Connect(unequipGun)
 
-local recoilTweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local recoilMagnitude = 0.15
+--// UI Setup local _, shootBtnRef = createUI() shootBtn = shootBtnRef shootBtn.MouseButton1Down:Connect(function() shooting = true while shooting do shoot() wait(0.15) end end) shootBtn.MouseButton1Up:Connect(function() shooting = false end)
 
-local function playShootSound()
-    if gunModel and gunModel.PrimaryPart then
-        local sound = Instance.new("Sound")
-        sound.SoundId = "rbxassetid://2767090" -- صدای تیر واقعی
-        sound.Volume = 0.9
-        sound.Parent = gunModel.PrimaryPart
-        sound:Play()
-        Debris:AddItem(sound, 2)
-    end
-end
+--// Notify Others That Script Is Running cheatJoinEvent:FireServer() cheatJoinEvent.OnClientEvent:Connect(function(name) local label = Instance.new("TextLabel", player:WaitForChild("PlayerGui")) label.Size = UDim2.new(1, 0, 0, 35) label.Position = UDim2.new(0, 0, 0, 25) label.Text = "⚠ "..name.." joined with script" label.Font = Enum.Font.GothamBold label.TextColor3 = Color3.fromRGB(255, 80, 80) label.BackgroundTransparency = 1 label.TextSize = 24 Debris:AddItem(label, 5) end)
 
-local function playRecoil()
-    if not gunModel or not gunModel.PrimaryPart then return end
-    local primary = gunModel.PrimaryPart
-    local origCFrame = primary.CFrame
-    local backCFrame = origCFrame * CFrame.new(0, 0, recoilMagnitude)
-    local tweenBack = TweenService:Create(primary, recoilTweenInfo, {CFrame = backCFrame})
-    tweenBack:Play()
-    tweenBack.Completed:Wait()
-    local tweenForward = TweenService:Create(primary, recoilTweenInfo, {CFrame = origCFrame})
-    tweenForward:Play()
-end
-
-local gunOffset = CFrame.new(0.5, -0.7, -1.5)
-local function updateGunPosition()
-    if gunModel and gunModel.PrimaryPart then
-        gunModel:SetPrimaryPartCFrame(cam.CFrame * gunOffset)
-    end
-end
-
-local function createBulletEffect(origin, direction)
-    local bullet = Instance.new("Part")
-    bullet.Size = Vector3.new(0.2, 0.2, 1)
-    bullet.Shape = Enum.PartType.Cylinder
-    bullet.Material = Enum.Material.Neon
-    bullet.BrickColor = BrickColor.new("Bright yellow")
-    bullet.CanCollide = false
-    bullet.Anchored = false
-    bullet.CFrame = CFrame.new(origin, origin + direction) * CFrame.Angles(math.rad(90), 0, 0)
-    bullet.Parent = workspace
-
-    local velocity = Instance.new("BodyVelocity")
-    velocity.Velocity = direction.Unit * 150
-    velocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-    velocity.Parent = bullet
-
-    Debris:AddItem(bullet, 0.7)
-end
-
-local function raycastShoot()
-    local origin = cam.CFrame.Position
-    local direction = cam.CFrame.LookVector * 500
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterDescendantsInstances = {player.Character}
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-
-    local raycastResult = workspace:Raycast(origin, direction, raycastParams)
-    if raycastResult then
-        local hitPart = raycastResult.Instance
-        local hitPlayer = nil
-
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character:FindFirstChild("HumanoidRootPart") then
-                if hitPart:IsDescendantOf(plr.Character) then
-                    hitPlayer = plr
-                    break
-                end
-            end
-        end
-
-        if hitPlayer and hitPlayer ~= player then
-            gunFireEvent:FireServer(hitPlayer, 15) -- ارسال 15 دمیج به سرور
-        end
-
-        createBulletEffect(origin, (raycastResult.Position - origin).Unit)
-    else
-        createBulletEffect(origin, cam.CFrame.LookVector)
-    end
-end
-
-local function shoot()
-    if not isEquipped then return end
-    playRecoil()
-    playShootSound()
-    raycastShoot()
-end
-
-local function startShooting()
-    if shooting then return end
-    shooting = true
-    while shooting do
-        shoot()
-        wait(0.15)
-    end
-end
-
-local function stopShooting()
-    shooting = false
-end
-
-local function onEquip()
-    if isEquipped then return end
-    isEquipped = true
-
-    player.CameraMode = Enum.CameraMode.LockFirstPerson
-
-    if gunTool then
-        gunModel = gunTool:FindFirstChild("GunModel")
-        if gunModel then
-            gunModel.Parent = cam
-            gunModel.PrimaryPart.Anchored = false
-        else
-            gunModel = createGunModel()
-            gunModel.Parent = cam
-        end
-    end
-
-    shootButton.Visible = true
-end
-
-local function onUnequip()
-    if not isEquipped then return end
-    isEquipped = false
-
-    player.CameraMode = Enum.CameraMode.Classic
-
-    if gunModel then
-        gunModel:Destroy()
-        gunModel = nil
-    end
-
-    shootButton.Visible = false
-    stopShooting()
-end
-
-local function giveGunToPlayer()
-    gunTool = createGunTool()
-    gunTool.Parent = player:WaitForChild("Backpack")
-
-    gunTool.Equipped:Connect(onEquip)
-    gunTool.Unequipped:Connect(onUnequip)
-end
-
-local screenGui, button = createUI()
-shootButton = button
-
-shootButton.MouseButton1Down:Connect(startShooting)
-shootButton.MouseButton1Up:Connect(stopShooting)
-shootButton.MouseLeave:Connect(stopShooting)
-
-RunService.RenderStepped:Connect(function()
-    if isEquipped then
-        updateGunPosition()
-    end
-end)
-
-giveGunToPlayer()
