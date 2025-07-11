@@ -1,88 +1,95 @@
---// 🔫 Advanced Gun + Shared Cheater Join Notification System
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
-local Players = game:GetService("Players") local ReplicatedStorage = game:GetService("ReplicatedStorage") local RunService = game:GetService("RunService") local TweenService = game:GetService("TweenService") local Debris = game:GetService("Debris")
+local player = Players.LocalPlayer
+local cam = workspace.CurrentCamera
 
-local player = Players.LocalPlayer local cam = workspace.CurrentCamera
+local fireEvent = ReplicatedStorage:WaitForChild("FakeGunFire")
+local cheatJoinEvent = ReplicatedStorage:WaitForChild("CheatJoinEvent")
 
---// Remote Events Setup if not ReplicatedStorage:FindFirstChild("FakeGunFire") then Instance.new("RemoteEvent", ReplicatedStorage).Name = "FakeGunFire" end if not ReplicatedStorage:FindFirstChild("CheatJoinEvent") then Instance.new("RemoteEvent", ReplicatedStorage).Name = "CheatJoinEvent" end local fireEvent = ReplicatedStorage:WaitForChild("FakeGunFire") local cheatJoinEvent = ReplicatedStorage:WaitForChild("CheatJoinEvent")
+print("[Client] Cheat script started")
 
---// Gun Model local function createGunModel() local model = Instance.new("Model") model.Name = "GunModel"
+-- ساده‌ترین مدل گان: فقط یک Part متصل به دوربین
+local gunPart = Instance.new("Part")
+gunPart.Size = Vector3.new(1.5, 0.5, 4)
+gunPart.Color = Color3.new(0, 0, 0)
+gunPart.Anchored = false
+gunPart.CanCollide = false
+gunPart.Parent = cam
 
-local body = Instance.new("Part")
-body.Name = "Body"
-body.Size = Vector3.new(1.6, 0.5, 3.8)
-body.Color = Color3.fromRGB(15, 15, 15)
-body.Material = Enum.Material.Metal
-body.Anchored = false
-body.CanCollide = false
-body.Parent = model
+local weld = Instance.new("WeldConstraint")
+weld.Part0 = gunPart
+weld.Part1 = cam
+weld.Parent = gunPart
 
-local grip = Instance.new("Part")
-grip.Size = Vector3.new(0.6, 0.85, 1.1)
-grip.Color = Color3.fromRGB(95, 52, 16)
-grip.Material = Enum.Material.Wood
-grip.Anchored = false
-grip.CanCollide = false
-grip.Parent = model
+-- دکمه شلیک (ScreenGui + TextButton)
+local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+screenGui.Name = "SimpleGunUI"
 
-local barrel = Instance.new("Part")
-barrel.Size = Vector3.new(0.35, 0.35, 2.2)
-barrel.Color = Color3.fromRGB(10, 10, 10)
-barrel.Material = Enum.Material.Metal
-barrel.Anchored = false
-barrel.CanCollide = false
-barrel.Parent = model
+local shootBtn = Instance.new("TextButton", screenGui)
+shootBtn.Size = UDim2.new(0, 100, 0, 100)
+shootBtn.Position = UDim2.new(1, -120, 1, -140)
+shootBtn.Text = "SHOOT"
+shootBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+shootBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+shootBtn.TextScaled = true
+shootBtn.AutoButtonColor = true
 
-local function weld(p0, p1)
-	local w = Instance.new("WeldConstraint")
-	w.Part0 = p0
-	w.Part1 = p1
-	w.Parent = p0
-end
-weld(body, grip)
-weld(body, barrel)
-grip.CFrame = body.CFrame * CFrame.new(0, -0.52, 0.8)
-barrel.CFrame = body.CFrame * CFrame.new(0, 0, -2.5)
-model.PrimaryPart = body
-return model
+local shooting = false
 
-end
+local function shoot()
+    local origin = cam.CFrame.Position
+    local direction = cam.CFrame.LookVector * 1000
 
---// Gun Tool local function createGunTool() local tool = Instance.new("Tool") tool.Name = "AK-47" tool.RequiresHandle = false tool.CanBeDropped = false
+    -- Raycast بدون خود پلیر
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {player.Character}
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
 
-local model = createGunModel()
-model.Parent = tool
-return tool
-
-end
-
---// UI local function createUI() local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui")) gui.Name = "GunUI"
-
-local btn = Instance.new("ImageButton")
-btn.Size = UDim2.new(0, 110, 0, 110)
-btn.Position = UDim2.new(1, -130, 1, -160)
-btn.Image = "rbxassetid://1482081277"
-btn.ImageColor3 = Color3.fromRGB(255, 200, 50)
-btn.BackgroundColor3 = Color3.fromRGB(10,10,10)
-btn.BackgroundTransparency = 0.2
-btn.Parent = gui
-return gui, btn
-
+    local ray = workspace:Raycast(origin, direction, rayParams)
+    if ray then
+        local hitPart = ray.Instance
+        local hitChar = hitPart:FindFirstAncestorOfClass("Model")
+        local hitPlayer = Players:GetPlayerFromCharacter(hitChar)
+        print("[Client] Ray hit: "..(hitPlayer and hitPlayer.Name or hitPart.Name))
+        if hitPlayer and hitPlayer ~= player then
+            fireEvent:FireServer(hitPlayer)
+        end
+    else
+        print("[Client] Ray missed")
+    end
 end
 
---// Logic local gunTool, gunModel, shootBtn local isEquipped, shooting = false, false
+shootBtn.MouseButton1Down:Connect(function()
+    if shooting then return end
+    shooting = true
+    while shooting do
+        shoot()
+        wait(0.2)
+    end
+end)
+shootBtn.MouseButton1Up:Connect(function()
+    shooting = false
+end)
+shootBtn.MouseLeave:Connect(function()
+    shooting = false
+end)
 
-local function playShootSound() if gunModel and gunModel.PrimaryPart then local s = Instance.new("Sound", gunModel.PrimaryPart) s.SoundId = "rbxassetid://2767090" s.Volume = 1 s:Play() Debris:AddItem(s, 2) end end
+-- نوتیفای وقتی کسی دیگه چیت ران کرد
+cheatJoinEvent.OnClientEvent:Connect(function(name)
+    print("[Client] "..name.." joined the cheat")
+    local notif = Instance.new("TextLabel", player.PlayerGui)
+    notif.Size = UDim2.new(1, 0, 0, 40)
+    notif.Position = UDim2.new(0, 0, 0, 20)
+    notif.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+    notif.TextColor3 = Color3.fromRGB(255, 255, 255)
+    notif.Font = Enum.Font.GothamBold
+    notif.TextScaled = true
+    notif.Text = "⚠ "..name.." joined with script"
+    wait(4)
+    notif:Destroy()
+end)
 
-local function shoot() if not isEquipped or not gunModel then return end playShootSound() local origin = cam.CFrame.Position local direction = cam.CFrame.LookVector * 1000 local rayParams = RaycastParams.new() rayParams.FilterDescendantsInstances = {player.Character} rayParams.FilterType = Enum.RaycastFilterType.Blacklist local ray = workspace:Raycast(origin, direction, rayParams) if ray and ray.Instance then local char = ray.Instance:FindFirstAncestorOfClass("Model") local hitPlr = Players:GetPlayerFromCharacter(char) if hitPlr and hitPlr ~= player then fireEvent:FireServer(hitPlr) end end end
-
---// Gun Equip local function equipGun() isEquipped = true player.CameraMode = Enum.CameraMode.LockFirstPerson gunModel = gunTool:FindFirstChild("GunModel") gunModel.Parent = cam end local function unequipGun() isEquipped = false player.CameraMode = Enum.CameraMode.Classic if gunModel then gunModel:Destroy() gunModel = nil end end
-
---// Realtime Gun Pos RunService.RenderStepped:Connect(function() if gunModel and isEquipped then gunModel:SetPrimaryPartCFrame(cam.CFrame * CFrame.new(0.5, -0.7, -1.5)) end end)
-
---// Give Gun gunTool = createGunTool() gunTool.Parent = player.Backpack gunTool.Equipped:Connect(equipGun) gunTool.Unequipped:Connect(unequipGun)
-
---// UI Setup local _, shootBtnRef = createUI() shootBtn = shootBtnRef shootBtn.MouseButton1Down:Connect(function() shooting = true while shooting do shoot() wait(0.15) end end) shootBtn.MouseButton1Up:Connect(function() shooting = false end)
-
---// Notify Others That Script Is Running cheatJoinEvent:FireServer() cheatJoinEvent.OnClientEvent:Connect(function(name) local label = Instance.new("TextLabel", player:WaitForChild("PlayerGui")) label.Size = UDim2.new(1, 0, 0, 35) label.Position = UDim2.new(0, 0, 0, 25) label.Text = "⚠ "..name.." joined with script" label.Font = Enum.Font.GothamBold label.TextColor3 = Color3.fromRGB(255, 80, 80) label.BackgroundTransparency = 1 label.TextSize = 24 Debris:AddItem(label, 5) end)
-
+-- اعلام شروع به سرور
+cheatJoinEvent:FireServer()
