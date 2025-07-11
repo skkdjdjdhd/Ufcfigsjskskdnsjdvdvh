@@ -74,7 +74,7 @@ end
 
 local function playShootSound() if gunModel and gunModel.PrimaryPart then local s = Instance.new("Sound", gunModel.PrimaryPart) s.SoundId = "rbxassetid://2767090" s.Volume = 1 s:Play() Debris:AddItem(s, 2) end end
 
-local function shoot() if not isEquipped or not gunModel then return end playShootSound() local origin = cam.CFrame.Position local direction = cam.CFrame.LookVector * 1000 local ray = workspace:Raycast(origin, direction, RaycastParams.new()) if ray and ray.Instance then local hitPlr = Players:GetPlayerFromCharacter(ray.Instance:FindFirstAncestorOfClass("Model")) if hitPlr and hitPlr ~= player then fireEvent:FireServer(hitPlr) end end end
+local function shoot() if not isEquipped or not gunModel then return end playShootSound() local origin = cam.CFrame.Position local direction = cam.CFrame.LookVector * 1000 local rayParams = RaycastParams.new() rayParams.FilterDescendantsInstances = {player.Character} rayParams.FilterType = Enum.RaycastFilterType.Blacklist local ray = workspace:Raycast(origin, direction, rayParams) if ray and ray.Instance then local char = ray.Instance:FindFirstAncestorOfClass("Model") local hitPlr = Players:GetPlayerFromCharacter(char) if hitPlr and hitPlr ~= player then fireEvent:FireServer(hitPlr) end end end
 
 --// Gun Equip local function equipGun() isEquipped = true player.CameraMode = Enum.CameraMode.LockFirstPerson gunModel = gunTool:FindFirstChild("GunModel") gunModel.Parent = cam end local function unequipGun() isEquipped = false player.CameraMode = Enum.CameraMode.Classic if gunModel then gunModel:Destroy() gunModel = nil end end
 
